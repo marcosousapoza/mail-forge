@@ -79,6 +79,22 @@ If a server lacks `MOVE`, MailForge performs `UID COPY` and marks only the reque
 `\Deleted`. If it also lacks `UIDPLUS`, MailForge does **not** issue global `EXPUNGE`; the result
 sets `pending_expunge: true`. This avoids expunging unrelated messages marked by another client.
 
+## Agent Skill
+
+The repository includes a portable Agent Skill that teaches compatible agents how to use
+MailForge safely, including mailbox-scoped UIDs, send confirmation, destructive-operation checks,
+attachment handling, and pending-expunge semantics.
+
+Install it directly from GitHub with the Agent Skills CLI:
+
+```sh
+npx skills add https://github.com/marcosousapoza/mail-forge --skill mailforge-email
+```
+
+The skill is stored at `skills/mailforge-email/SKILL.md`. Installing the skill does not configure
+the MCP server or credentials; configure MailForge in the agent's MCP client separately. Restart
+the client after installing a skill or changing its MCP configuration.
+
 ## Configuration
 
 Non-sensitive settings use environment variables. Passwords and usernames are read from files;
