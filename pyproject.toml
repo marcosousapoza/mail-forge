@@ -31,7 +31,7 @@ Issues = "https://github.com/marcosousapoza/mail-forge/issues"
 
 [dependency-groups]
 dev = [
-  "mypy>=1.18.0,<2",
+  "mypy>=1.18.0,<3",
   "pip-audit>=2.9.0,<3",
   "pytest>=9.0.3,<10",
   "pytest-asyncio>=1.2.0,<2",
