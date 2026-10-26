@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: ["main", "master"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: astral-sh/setup-uv@e92bafb6253dcd438e0484186d7669ea7a8ca1cc # v6.4.3
+        with:
+          enable-cache: true
+      - run: uv sync --frozen --all-groups
+      - run: uv run ruff format --check .
+      - run: uv run ruff check .
+      - run: uv run mypy src
+      - run: uv run pytest --cov=mailforge --cov-report=term-missing --cov-fail-under=55
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: astral-sh/setup-uv@e92bafb6253dcd438e0484186d7669ea7a8ca1cc # v6.4.3
+      - run: uv sync --frozen --all-groups
+      - run: uv run pip-audit --skip-editable
+
+  container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: astral-sh/setup-uv@e92bafb6253dcd438e0484186d7669ea7a8ca1cc # v6.4.3
+      - run: uv sync --frozen --all-groups
+      - name: Build with Podman
+        run: podman build --pull=always --tag localhost/mailforge-mcp:test -f Containerfile .
+      - name: Check runtime user and read-only compatibility
+        run: |
+          test "$(podman run --rm --entrypoint=id localhost/mailforge-mcp:test -u)" = "65532"
+          podman run --rm --read-only --entrypoint=python localhost/mailforge-mcp:test -c "import mailforge"
+      - name: Create smoke-test secrets
+        run: |
+          printf '%s' 'ci-user@example.invalid' | podman secret create mailforge_ci_user -
+          printf '%s' 'not-a-production-password' | podman secret create mailforge_ci_password -
+      - name: MCP stdio container smoke test
+        env:
+          MAILFORGE_TEST_IMAGE: localhost/mailforge-mcp:test
+        run: uv run pytest tests/integration/test_container.py
